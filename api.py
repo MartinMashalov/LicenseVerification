@@ -5,7 +5,7 @@ import uvicorn
 app = FastAPI()
 
 # Load the CSV file
-df = pd.read_csv('@license_enterprise.csv')
+df = pd.read_csv('licenses_enterprise.csv')
 
 @app.get("/check_license/{license_code}")
 async def check_license(license_code: str):
@@ -17,6 +17,6 @@ async def check_license(license_code: str):
 
 # Add this block to run the server with uvicorn
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
 
 

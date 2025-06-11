@@ -55,11 +55,7 @@ export interface LicenseRequest {
   email: string;
 }
 
-export interface CreateLicenseKeyResponse {
-  message: string;
-  email: string;
-  license_key: string;
-}
+
 
 export interface ApiKeyResponse {
   email?: string;
@@ -95,18 +91,7 @@ export interface SendLicenseEmailResponse {
   license_key: string;
 }
 
-export interface ManualLicenseData {
-  email: string;
-  license_code: string;
-  organization_name: string;
-  first_name: string;
-  last_name: string;
-}
 
-export interface DeleteUserResponse {
-  message: string;
-  email: string;
-}
 
 export interface ServerHealthResponse {
   message: string;

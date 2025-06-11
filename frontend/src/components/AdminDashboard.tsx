@@ -76,12 +76,13 @@ export const AdminDashboard: React.FC = () => {
 
     setUpdateLoading(true);
     try {
-      const response = await apiService.createLicenseKey({ email: selectedUser.email });
+      // Use sendLicenseEmail which will create a license key if it doesn't exist
+      const response = await apiService.sendLicenseEmail({ email: selectedUser.email });
       
       // Refresh user info
       const updatedUser = await apiService.getUserInfo(selectedUser.email);
       setSelectedUser(updatedUser);
-      alert(`License key created: ${response.license_key}`);
+      alert(`License key created and sent: ${response.license_key}`);
     } catch (error) {
       console.error('Failed to create license:', error);
       alert('Failed to create license key');
@@ -106,24 +107,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const deleteUser = async () => {
-    if (!selectedUser) return;
-    
-    if (!window.confirm(`Are you sure you want to delete user ${selectedUser.email}?`)) {
-      return;
-    }
-
-    setUpdateLoading(true);
-    try {
-      await apiService.deleteUser(selectedUser.email);
-      setSelectedUser(null);
-      loadLicenses(); // Refresh the list
-      alert('User deleted successfully');
-    } catch (error) {
-      console.error('Failed to delete user:', error);
-      alert('Failed to delete user');
-    } finally {
-      setUpdateLoading(false);
-    }
+    alert('Delete user functionality not available - endpoint not implemented in backend');
   };
 
   return (

@@ -154,26 +154,12 @@ export const apiService = {
   // UTILITY FUNCTIONS FOR COMMON WORKFLOWS
   // =============================================
 
-  // Complete user signup flow (combines account creation and license generation)
-  completeUserSignup: async (userData: CreateAccountRequest): Promise<{
-    account: CreateAccountResponse;
-    license: CreateLicenseKeyResponse;
-  }> => {
-    // Create account
-    const account = await apiService.createAccount(userData);
-    
-    // Generate license key
-    const license = await apiService.createLicenseKey({ email: userData.email });
-    
-    return { account, license };
-  },
-
   // Start free trial (create account + generate license + send email)
   startFreeTrial: async (userData: CreateAccountRequest): Promise<SendLicenseEmailResponse> => {
-    // Create account
+    // Create account (this automatically creates a license key according to backend)
     await apiService.createAccount(userData);
     
-    // Send license email (this will also create the license key)
+    // Send license email
     const response = await apiService.sendLicenseEmail({ email: userData.email });
     
     return response;
@@ -189,7 +175,7 @@ export const apiService = {
       // Check license validity
       const licenseInfo = await apiService.checkLicense(licenseCode);
       
-      if (licenseInfo.valid && licenseInfo.license_info) {
+      if (licenseInfo.valid) {
         // Get API key for this license
         const apiKeyResponse = await apiService.getApiKeyByLicense(licenseCode);
         

@@ -26,15 +26,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const loadLicenses = async () => {
-    setLoading(true);
-    try {
-      const allLicenses = await apiService.getAllLicenses();
-      setLicenses(allLicenses);
-    } catch (error) {
-      console.error('Failed to load licenses:', error);
-    } finally {
-      setLoading(false);
-    }
+    // Note: getAllLicenses endpoint doesn't exist in backend
+    // This would need to be implemented on the backend first
+    setLicenses([]);
+    console.log('getAllLicenses endpoint not available in backend');
   };
 
   const searchUser = async () => {

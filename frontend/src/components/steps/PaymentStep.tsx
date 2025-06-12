@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { UserSignupData, CreateAccountRequest } from '../../types';
-import { apiService } from '../../services/api';
+import React, { useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { UserSignupData, CreateAccountRequest } from "../../types";
+import { apiService } from "../../services/api";
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_...');
+const stripePromise = loadStripe(
+  process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "pk_test_..."
+);
 
 interface PaymentStepProps {
   data: UserSignupData;
@@ -13,17 +15,19 @@ interface PaymentStepProps {
   setLicenseKey: (key: string) => void;
 }
 
-export const PaymentStep: React.FC<PaymentStepProps> = ({ 
-  data, 
-  onNext, 
-  onBack, 
-  setLicenseKey 
+export const PaymentStep: React.FC<PaymentStepProps> = ({
+  data,
+  onNext,
+  onBack,
+  setLicenseKey,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Convert UserSignupData to CreateAccountRequest format
-  const convertToAccountRequest = (userData: UserSignupData): CreateAccountRequest => ({
+  const convertToAccountRequest = (
+    userData: UserSignupData
+  ): CreateAccountRequest => ({
     first_name: userData.firstName,
     last_name: userData.lastName,
     company_name: userData.companyName,
@@ -38,22 +42,27 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     try {
       const stripe = await stripePromise;
       if (!stripe) {
-        throw new Error('Stripe failed to initialize');
+        throw new Error("Stripe failed to initialize");
       }
 
       // Create checkout session
       const checkoutResponse = await apiService.createCheckoutSession({
-        price_id: process.env.REACT_APP_STRIPE_PRICE_ID || 'price_1234567890',
+        price_id:
+          process.env.REACT_APP_STRIPE_PRICE_ID ||
+          "price_1RYr83E4ulyKA6FqULZdf1tM",
         user_email: data.email,
         success_url: `${window.location.origin}/success`,
         cancel_url: `${window.location.origin}`,
-        user_data: data
+        user_data: data,
       });
 
       // Check if we got a test mode response
-      if (checkoutResponse.message && checkoutResponse.message.includes('TEST MODE')) {
-        console.log('Test mode detected:', checkoutResponse.message);
-        
+      if (
+        checkoutResponse.message &&
+        checkoutResponse.message.includes("TEST MODE")
+      ) {
+        console.log("Test mode detected:", checkoutResponse.message);
+
         try {
           const accountData = convertToAccountRequest(data);
           const licenseResponse = await apiService.startFreeTrial(accountData);
@@ -61,7 +70,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           onNext();
           return;
         } catch (accountError) {
-          const licenseResponse = await apiService.sendLicenseEmail({ email: data.email });
+          const licenseResponse = await apiService.sendLicenseEmail({
+            email: data.email,
+          });
           setLicenseKey(licenseResponse.license_key);
           onNext();
           return;
@@ -77,8 +88,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         throw new Error(error.message);
       }
     } catch (err) {
-      console.error('Payment failed:', err);
-      setError(err instanceof Error ? err.message : 'Payment failed');
+      console.error("Payment failed:", err);
+      setError(err instanceof Error ? err.message : "Payment failed");
     } finally {
       setLoading(false);
     }
@@ -104,7 +115,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
           {/* Popular Badge */}
           <div className="bg-[#5B67E8] px-4 py-2 text-center">
-            <span className="text-white font-medium text-sm">VisionPay Pro</span>
+            <span className="text-white font-medium text-sm">
+              VisionPay Pro
+            </span>
           </div>
 
           <div className="px-6 py-6">
@@ -113,12 +126,12 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               <div className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold mb-3">
                 30 Days FREE
               </div>
-              
+
               <div className="mb-3">
                 <div className="text-3xl font-bold text-gray-900">$0</div>
                 <div className="text-gray-500 text-sm">for the first month</div>
               </div>
-              
+
               <div className="flex items-center justify-center space-x-2">
                 <span className="text-gray-600">then</span>
                 <span className="text-xl font-bold text-[#5B67E8]">$65</span>
@@ -131,38 +144,78 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center text-sm">
                   <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3 h-3 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
-                  <span className="text-gray-700">Complete 30-day free trial</span>
+                  <span className="text-gray-700">
+                    Complete 30-day free trial
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center text-sm">
                   <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3 h-3 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
-                  <span className="text-gray-700">Full access to VisionPay</span>
+                  <span className="text-gray-700">
+                    Full access to VisionPay
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center text-sm">
                   <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3 h-3 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
-                  <span className="text-gray-700">Priority customer support</span>
+                  <span className="text-gray-700">
+                    Priority customer support
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center text-sm">
                   <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3 h-3 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
-                  <span className="text-gray-700">Cancel anytime before trial ends</span>
+                  <span className="text-gray-700">
+                    Cancel anytime before trial ends
+                  </span>
                 </div>
               </div>
             </div>
@@ -175,14 +228,30 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             >
               {loading ? (
                 <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Processing...
                 </div>
               ) : (
-                'Start Your Free Trial'
+                "Start Your Free Trial"
               )}
             </button>
 
@@ -203,8 +272,18 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             disabled={loading}
             className="inline-flex items-center px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 font-medium text-sm disabled:opacity-50"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
             </svg>
             Back
           </button>
@@ -217,4 +296,4 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       </div>
     </div>
   );
-}; 
+};

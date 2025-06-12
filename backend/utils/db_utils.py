@@ -27,7 +27,6 @@ class License(Base):
     last_name = Column(String(100), nullable=False)
     company_name = Column(String(200), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    mistral_api_key = Column(String(500), nullable=False)
     license_code = Column(String(10), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -40,7 +39,6 @@ class License(Base):
             'last_name': self.last_name,
             'company_name': self.company_name,
             'email': self.email,
-            'mistral_api_key': self.mistral_api_key,
             'license_code': self.license_code,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
@@ -140,7 +138,7 @@ class LicenseRepository:
                 return None
     
     def add_new_user(self, first_name: str, last_name: str, company_name: str, 
-                     email: str, mistral_api_key: str) -> Optional[str]:
+                     email: str) -> Optional[str]:
         """Add a new user to the database and return the user UUID"""
         with self.db_manager.get_session() as session:
             try:
@@ -155,8 +153,7 @@ class LicenseRepository:
                     first_name=first_name,
                     last_name=last_name,
                     company_name=company_name,
-                    email=email,
-                    mistral_api_key=mistral_api_key
+                    email=email
                 )
                 
                 session.add(new_license)
@@ -267,7 +264,7 @@ class LicenseRepository:
                     return False
                 
                 # Update allowed fields
-                allowed_fields = ['first_name', 'last_name', 'company_name', 'mistral_api_key']
+                allowed_fields = ['first_name', 'last_name', 'company_name']
                 for field, value in kwargs.items():
                     if field in allowed_fields and hasattr(user, field):
                         setattr(user, field, value)
@@ -380,8 +377,7 @@ def test_db_utils():
         first_name="John",
         last_name="Doe", 
         company_name="Test Company",
-        email="john.doe@test.com",
-        mistral_api_key="test_api_key_123"
+        email="john.doe@test.com"
     )
     print(f"Add user success, user_id: {user_id}")
     

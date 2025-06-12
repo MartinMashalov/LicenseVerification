@@ -32,7 +32,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     last_name: userData.lastName,
     company_name: userData.companyName,
     email: userData.email,
-    mistral_api_key: userData.mistralApiKey,
   });
 
   const handlePayment = async () => {
@@ -52,7 +51,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           "price_1RYr83E4ulyKA6FqULZdf1tM",
         user_email: data.email,
         success_url: `${window.location.origin}/success`,
-        cancel_url: `${window.location.origin}`,
+        cancel_url: `${window.location.origin}/signup`,
         user_data: data,
       });
 

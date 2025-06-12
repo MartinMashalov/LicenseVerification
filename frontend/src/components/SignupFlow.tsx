@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
-import { UserSignupData, SignupStep } from '../types';
+import { SignupStep } from '../types';
 import { BasicInfoStep } from './steps/BasicInfoStep';
-import { ApiKeyStep } from './steps/ApiKeyStep';
 import { PaymentStep } from './steps/PaymentStep';
 import { SuccessStep } from './steps/SuccessStep';
 
-const initialFormData: UserSignupData = {
+const initialFormData = {
   firstName: '',
   lastName: '',
   companyName: '',
   email: '',
-  mistralApiKey: '',
 };
 
 export const SignupFlow: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<SignupStep>(SignupStep.BASIC_INFO);
-  const [formData, setFormData] = useState<UserSignupData>(initialFormData);
+  const [formData, setFormData] = useState(initialFormData);
   const [licenseKey, setLicenseKey] = useState<string>('');
 
-  const updateFormData = (updates: Partial<UserSignupData>) => {
+  const updateFormData = (updates: Partial<typeof initialFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
@@ -50,17 +48,6 @@ export const SignupFlow: React.FC = () => {
             onNext={nextStep}
           />
         );
-      
-      case SignupStep.API_KEY:
-        return (
-          <ApiKeyStep 
-            data={formData}
-            updateData={updateFormData}
-            onNext={nextStep}
-            onBack={prevStep}
-          />
-        );
-      
       case SignupStep.PAYMENT:
         return (
           <PaymentStep 
@@ -70,7 +57,6 @@ export const SignupFlow: React.FC = () => {
             setLicenseKey={setLicenseKey}
           />
         );
-      
       case SignupStep.SUCCESS:
         return (
           <SuccessStep 
@@ -79,15 +65,10 @@ export const SignupFlow: React.FC = () => {
             onRestart={resetFlow}
           />
         );
-      
       default:
         return null;
     }
   };
 
-  return (
-    <>
-      {renderStep()}
-    </>
-  );
+  return <>{renderStep()}</>;
 }; 

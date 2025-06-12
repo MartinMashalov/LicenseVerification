@@ -29,6 +29,7 @@ app.add_middleware(
 # Configure Stripe
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -61,12 +62,13 @@ async def check_license(license_code: str):
 async def get_api_key_by_email(email: str):
     """Get API key by email address."""
     try:
-        api_key = license_repo.get_api_key_by_email(email)
-        if api_key:
-            return {"email": email, "api_key": api_key}
+        # Check if user exists
+        user_info = license_repo.get_license_by_email(email)
+        if user_info:
+            return {"email": email, "api_key": MISTRAL_API_KEY}
         else:
             raise HTTPException(
-                status_code=404, detail="API key not found for this email")
+                status_code=404, detail="User not found")
     except Exception as e:
         logger.error(f"Error retrieving API key for email {email}: {e}")
         raise HTTPException(status_code=500, detail="Error retrieving API key")
@@ -76,12 +78,13 @@ async def get_api_key_by_email(email: str):
 async def get_api_key_by_license(license_key: str):
     """Get API key by license key."""
     try:
-        api_key = license_repo.get_api_key_by_license_key(license_key)
-        if api_key:
-            return {"api_key": api_key}
+        # Check if license exists
+        license_info = license_repo.get_license_by_code(license_key)
+        if license_info:
+            return {"api_key": MISTRAL_API_KEY}
         else:
             raise HTTPException(
-                status_code=404, detail="API key not found for this license key")
+                status_code=404, detail="License key not found")
     except Exception as e:
         logger.error(
             f"Error retrieving API key for license {license_key}: {e}")
@@ -93,8 +96,7 @@ async def create_new_account(
     first_name: str,
     last_name: str,
     company_name: str,
-    email: str,
-    mistral_api_key: str
+    email: str
 ):
     """Create a new user account with automatic license key generation."""
     try:
@@ -102,8 +104,7 @@ async def create_new_account(
             first_name=first_name,
             last_name=last_name,
             company_name=company_name,
-            email=email,
-            mistral_api_key=mistral_api_key
+            email=email
         )
 
         if user_id:
@@ -230,8 +231,7 @@ async def create_checkout_session(
     cancel_url: str = Form(...),
     first_name: str = Form(...),
     last_name: str = Form(...),
-    company_name: str = Form(...),
-    mistral_api_key: str = Form(...)
+    company_name: str = Form(...)
 ):
     """Create a Stripe checkout session for subscription."""
     try:
@@ -244,7 +244,6 @@ async def create_checkout_session(
         logger.info(f"first_name={first_name}")
         logger.info(f"last_name={last_name}")
         logger.info(f"company_name={company_name}")
-        logger.info(f"mistral_api_key={mistral_api_key}")
 
         # Check if Stripe is configured
         if not stripe.api_key:
@@ -284,8 +283,7 @@ async def create_checkout_session(
                     'user_email': user_email,
                     'first_name': first_name,
                     'last_name': last_name,
-                    'company_name': company_name,
-                    'mistral_api_key': mistral_api_key,
+                    'company_name': company_name
                 }
             )
             logger.info(f"Stripe session created: {session.id}")
@@ -360,8 +358,4 @@ async def stripe_webhook(request: Request):
 
 
 if __name__ == "__main__":
-    local: bool = False
-    if local:
-        uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
-    else:
-        uvicorn.run("api:app", host="0.0.0.0", port=8005, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0", port=8005, reload=True)

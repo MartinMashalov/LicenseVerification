@@ -3,7 +3,6 @@ export interface UserSignupData {
   lastName: string;
   companyName: string;
   email: string;
-  mistralApiKey: string;
 }
 
 export interface CheckoutSessionData {
@@ -16,9 +15,8 @@ export interface CheckoutSessionData {
 
 export enum SignupStep {
   BASIC_INFO = 1,
-  API_KEY = 2,
-  PAYMENT = 3,
-  SUCCESS = 4
+  PAYMENT = 2,
+  SUCCESS = 3
 }
 
 export interface LicenseResponse {
@@ -33,7 +31,6 @@ export interface CreateAccountRequest {
   last_name: string;
   company_name: string;
   email: string;
-  mistral_api_key: string;
 }
 
 export interface CreateAccountResponse {
@@ -55,8 +52,6 @@ export interface LicenseRequest {
   email: string;
 }
 
-
-
 export interface ApiKeyResponse {
   email?: string;
   license_key?: string;
@@ -69,7 +64,6 @@ export interface UserInfo {
   last_name: string;
   company_name: string;
   email: string;
-  mistral_api_key: string;
   license_code?: string;
   created_at: string;
   updated_at: string;
@@ -90,8 +84,6 @@ export interface SendLicenseEmailResponse {
   email: string;
   license_key: string;
 }
-
-
 
 export interface ServerHealthResponse {
   message: string;

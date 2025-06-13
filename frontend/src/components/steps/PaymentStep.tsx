@@ -4,12 +4,14 @@ import { UserSignupData } from "../../types";
 import { apiService } from "../../services/api";
 
 // Initialize Stripe with better error handling
-const stripePromise = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY 
+const stripePromise = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY)
   : null;
 
 if (!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY) {
-  console.error("Stripe publishable key is not configured in environment variables!");
+  console.error(
+    "Stripe publishable key is not configured in environment variables!"
+  );
 }
 
 interface PaymentStepProps {
@@ -28,35 +30,42 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-
-
   const handlePayment = async () => {
     setLoading(true);
     setError(null);
 
     try {
       if (!stripePromise) {
-        throw new Error("Stripe is not properly configured. Please check your environment variables.");
+        throw new Error(
+          "Stripe is not properly configured. Please check your environment variables."
+        );
       }
 
       const stripe = await stripePromise;
       if (!stripe) {
-        throw new Error("Failed to initialize Stripe. Please check your publishable key.");
+        throw new Error(
+          "Failed to initialize Stripe. Please check your publishable key."
+        );
       }
 
       // Create checkout session (user already exists, license key will be created in backend)
       const checkoutResponse = await apiService.createCheckoutSession({
-        price_id: process.env.REACT_APP_STRIPE_PRICE_ID || "price_1RYr83E4ulyKA6FqULZdf1tM",
+        price_id:
+          process.env.REACT_APP_STRIPE_PRICE_ID ||
+          "price_1RYr83E4ulyKA6FqULZdf1tM",
         user_email: data.email,
-        success_url: `${window.location.origin}/success`,
+        success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${window.location.origin}/`,
-        user_data: data
+        user_data: data,
       });
 
       // Check if we got a test mode response (when Stripe is not configured)
-      if (checkoutResponse.message && checkoutResponse.message.includes("TEST MODE")) {
+      if (
+        checkoutResponse.message &&
+        checkoutResponse.message.includes("TEST MODE")
+      ) {
         console.log("Test mode detected:", checkoutResponse.message);
-        
+
         // In test mode, send license email directly since payment is simulated
         try {
           console.log("Calling sendLicenseEmail for:", data.email);
@@ -64,21 +73,30 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             email: data.email,
           });
           console.log("License response received:", licenseResponse);
-          console.log("License key from response:", licenseResponse.license_key);
-          
-          const finalLicenseKey = licenseResponse.license_key || "TEST_LICENSE_KEY";
+          console.log(
+            "License key from response:",
+            licenseResponse.license_key
+          );
+
+          const finalLicenseKey =
+            licenseResponse.license_key || "TEST_LICENSE_KEY";
           console.log("Setting license key to:", finalLicenseKey);
           setLicenseKey(finalLicenseKey);
           onNext(); // Move to success step directly
           return;
         } catch (licenseError) {
-          console.error("Failed to send license email in test mode:", licenseError);
-          throw new Error("Failed to process test mode license. Please try again.");
+          console.error(
+            "Failed to send license email in test mode:",
+            licenseError
+          );
+          throw new Error(
+            "Failed to process test mode license. Please try again."
+          );
         }
       }
 
       // Demo mode: skip Stripe checkout when REACT_APP_DEMO_MODE=true
-      if (process.env.REACT_APP_DEMO_MODE === 'true') {
+      if (process.env.REACT_APP_DEMO_MODE === "true") {
         console.log("Demo mode enabled: Skipping Stripe checkout");
         try {
           const licenseResponse = await apiService.sendLicenseEmail({
@@ -95,11 +113,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       // For real payments, redirect to Stripe Checkout
       if (!checkoutResponse.session_id) {
-        throw new Error("No session ID received from the server. Please check your backend configuration.");
+        throw new Error(
+          "No session ID received from the server. Please check your backend configuration."
+        );
       }
 
       const { error } = await stripe.redirectToCheckout({
-        sessionId: checkoutResponse.session_id
+        sessionId: checkoutResponse.session_id,
       });
 
       if (error) {

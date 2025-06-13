@@ -54,7 +54,6 @@ export const apiService = {
     formData.append('last_name', accountData.last_name);
     formData.append('company_name', accountData.company_name);
     formData.append('email', accountData.email);
-    formData.append('mistral_api_key', accountData.mistral_api_key);
     
     const response = await api.post('/create-account', formData, {
       headers: {
@@ -137,7 +136,6 @@ export const apiService = {
     formData.append('first_name', data.user_data.firstName);
     formData.append('last_name', data.user_data.lastName);
     formData.append('company_name', data.user_data.companyName);
-    formData.append('mistral_api_key', data.user_data.mistralApiKey);
     
     const response = await api.post('/create-checkout-session', formData, {
       headers: {
@@ -150,6 +148,32 @@ export const apiService = {
   // =============================================
   // UTILITY FUNCTIONS FOR COMMON WORKFLOWS
   // =============================================
+
+  // Test payment success (for development/testing)
+  testPaymentSuccess: async (email: string): Promise<any> => {
+    const formData = new URLSearchParams();
+    formData.append('email', email);
+    
+    const response = await api.post('/test-payment-success', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
+  },
+
+  // Process payment success by validating Stripe session
+  processPaymentSuccess: async (sessionId: string): Promise<any> => {
+    const formData = new URLSearchParams();
+    formData.append('session_id', sessionId);
+    
+    const response = await api.post('/process-payment-success', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
+  },
 
   // Start free trial (create account + generate license + send email)
   startFreeTrial: async (userData: CreateAccountRequest): Promise<SendLicenseEmailResponse> => {
@@ -193,17 +217,17 @@ export const apiService = {
   // Update user profile (convenience method)
   updateUserProfile: async (
     email: string, 
-    updates: Partial<Pick<CreateAccountRequest, 'first_name' | 'last_name' | 'company_name' | 'mistral_api_key'>>
+    updates: Partial<Pick<CreateAccountRequest, 'first_name' | 'last_name' | 'company_name'>>
   ): Promise<UpdateApiKeyResponse> => {
     // For now, we only support updating API key through the dedicated endpoint
     // You could extend this to support other fields when backend supports it
-    if (updates.mistral_api_key) {
+    if (updates.company_name) {
       return await apiService.updateApiKey({
         email,
-        new_api_key: updates.mistral_api_key
+        new_api_key: updates.company_name
       });
     }
     
-    throw new Error('Only API key updates are currently supported');
+    throw new Error('Only company name updates are currently supported');
   }
 }; 

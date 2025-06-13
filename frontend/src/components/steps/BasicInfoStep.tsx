@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserSignupData } from '../../types';
+import { api, apiService } from '../../services/api';
 
 interface BasicInfoStepProps {
   data: UserSignupData;
@@ -8,10 +9,45 @@ interface BasicInfoStepProps {
 }
 
 export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ data, updateData, onNext }) => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (data.firstName && data.lastName && data.companyName && data.email) {
-      onNext();
+      setIsLoading(true);
+      setError('');
+      
+      try {
+        // Check if user exists first
+        const response = await api.get(`/user-exists/${encodeURIComponent(data.email)}`);
+        const { exists } = response.data;
+        
+        if (exists) {
+          setError('A user with this email already exists. Please use a different email.');
+          return;
+        }
+
+        // Create new user account (without license key)
+        await apiService.createAccount({
+          first_name: data.firstName,
+          last_name: data.lastName,
+          company_name: data.companyName,
+          email: data.email
+        });
+
+        // Move to next step after successful account creation
+        onNext();
+      } catch (err: any) {
+        console.error('Error creating account:', err);
+        if (err.response?.status === 500 && err.response?.data?.detail?.includes('already exists')) {
+          setError('A user with this email already exists. Please use a different email.');
+        } else {
+          setError('Failed to create account. Please try again.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -30,7 +66,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ data, updateData, 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="firstName" className="block text-[#5B67E8] text-sm font-medium mb-2">
+              <label htmlFor="firstName" className="block text-gray-500 text-sm font-medium mb-2">
                 First Name *
               </label>
               <input
@@ -38,7 +74,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ data, updateData, 
                 id="firstName"
                 value={data.firstName}
                 onChange={(e) => updateData({ firstName: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-[#5B67E8] rounded-xl focus:outline-none focus:border-[#4A56D8] text-gray-800 text-sm placeholder-gray-400 text-center"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#5B67E8] text-gray-800 text-sm placeholder-gray-400 text-center"
                 placeholder=""
                 required
               />
@@ -89,17 +125,23 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ data, updateData, 
               />
             </div>
 
+            {error && (
+              <div className="text-red-500 text-sm text-center">
+                {error}
+              </div>
+            )}
+
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={!isValid}
+                disabled={!isValid || isLoading}
                 className={`w-full py-3 rounded-full font-semibold text-base transition-all ${
-                  isValid
+                  isValid && !isLoading
                     ? 'bg-[#5B67E8] hover:bg-[#4A56D8] text-white shadow-lg'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
-                Continue
+                {isLoading ? 'Creating...' : 'Continue'}
               </button>
             </div>
           </form>

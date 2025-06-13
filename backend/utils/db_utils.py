@@ -137,6 +137,18 @@ class LicenseRepository:
                 session.rollback()
                 return None
     
+    def user_exists(self, email: str) -> bool:
+        """
+        Check if a user with the given email already exists in the database.
+        """
+        with self.db_manager.get_session() as session:
+            try:
+                return session.query(License).filter(License.email == email).first() is not None
+            except Exception as e:
+                logger.error(f"Error checking if user exists for {email}: {e}")
+                session.rollback()
+                return False
+
     def add_new_user(self, first_name: str, last_name: str, company_name: str, 
                      email: str) -> Optional[str]:
         """Add a new user to the database and return the user UUID"""

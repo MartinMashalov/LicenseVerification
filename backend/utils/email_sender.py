@@ -145,7 +145,7 @@ class LicenseEmailSender:
 
     def send_license_email(self, email: str, company_name: str, license_key: str) -> tuple[bool, str]:
         """Send a license key email to the user."""
-        
+        print("SENDING EMAIL")
         # Check if email credentials are configured
         if not self.email_settings.email_sender or not self.email_settings.app_password:
             logger.warning("Gmail credentials not configured. Running in test mode.")

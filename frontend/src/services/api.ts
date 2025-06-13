@@ -149,6 +149,32 @@ export const apiService = {
   // UTILITY FUNCTIONS FOR COMMON WORKFLOWS
   // =============================================
 
+  // Test payment success (for development/testing)
+  testPaymentSuccess: async (email: string): Promise<any> => {
+    const formData = new URLSearchParams();
+    formData.append('email', email);
+    
+    const response = await api.post('/test-payment-success', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
+  },
+
+  // Process payment success by validating Stripe session
+  processPaymentSuccess: async (sessionId: string): Promise<any> => {
+    const formData = new URLSearchParams();
+    formData.append('session_id', sessionId);
+    
+    const response = await api.post('/process-payment-success', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
+  },
+
   // Start free trial (create account + generate license + send email)
   startFreeTrial: async (userData: CreateAccountRequest): Promise<SendLicenseEmailResponse> => {
     // Create account (this automatically creates a license key according to backend)

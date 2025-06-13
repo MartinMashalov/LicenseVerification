@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { UserSignupData, CreateAccountRequest } from "../../types";
+import { UserSignupData } from "../../types";
 import { apiService } from "../../services/api";
 
-// Initialize Stripe
-const stripePromise = loadStripe(
-  process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "pk_test_..."
-);
+// Initialize Stripe with better error handling
+const stripePromise = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY 
+  ? loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+if (!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY) {
+  console.error("Stripe publishable key is not configured in environment variables!");
+}
 
 interface PaymentStepProps {
   data: UserSignupData;
@@ -24,66 +28,82 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Convert UserSignupData to CreateAccountRequest format
-  const convertToAccountRequest = (
-    userData: UserSignupData
-  ): CreateAccountRequest => ({
-    first_name: userData.firstName,
-    last_name: userData.lastName,
-    company_name: userData.companyName,
-    email: userData.email,
-  });
+
 
   const handlePayment = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error("Stripe failed to initialize");
+      if (!stripePromise) {
+        throw new Error("Stripe is not properly configured. Please check your environment variables.");
       }
 
-      // Create checkout session
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error("Failed to initialize Stripe. Please check your publishable key.");
+      }
+
+      // Create checkout session (user already exists, license key will be created in backend)
       const checkoutResponse = await apiService.createCheckoutSession({
-        price_id:
-          process.env.REACT_APP_STRIPE_PRICE_ID ||
-          "price_1RYr83E4ulyKA6FqULZdf1tM",
+        price_id: process.env.REACT_APP_STRIPE_PRICE_ID || "price_1RYr83E4ulyKA6FqULZdf1tM",
         user_email: data.email,
         success_url: `${window.location.origin}/success`,
-        cancel_url: `${window.location.origin}/signup`,
-        user_data: data,
+        cancel_url: `${window.location.origin}/`,
+        user_data: data
       });
 
-      // Check if we got a test mode response
-      if (
-        checkoutResponse.message &&
-        checkoutResponse.message.includes("TEST MODE")
-      ) {
+      // Check if we got a test mode response (when Stripe is not configured)
+      if (checkoutResponse.message && checkoutResponse.message.includes("TEST MODE")) {
         console.log("Test mode detected:", checkoutResponse.message);
-
+        
+        // In test mode, send license email directly since payment is simulated
         try {
-          const accountData = convertToAccountRequest(data);
-          const licenseResponse = await apiService.startFreeTrial(accountData);
-          setLicenseKey(licenseResponse.license_key);
-          onNext();
-          return;
-        } catch (accountError) {
+          console.log("Calling sendLicenseEmail for:", data.email);
           const licenseResponse = await apiService.sendLicenseEmail({
             email: data.email,
           });
-          setLicenseKey(licenseResponse.license_key);
-          onNext();
+          console.log("License response received:", licenseResponse);
+          console.log("License key from response:", licenseResponse.license_key);
+          
+          const finalLicenseKey = licenseResponse.license_key || "TEST_LICENSE_KEY";
+          console.log("Setting license key to:", finalLicenseKey);
+          setLicenseKey(finalLicenseKey);
+          onNext(); // Move to success step directly
           return;
+        } catch (licenseError) {
+          console.error("Failed to send license email in test mode:", licenseError);
+          throw new Error("Failed to process test mode license. Please try again.");
         }
       }
 
-      // Redirect to Stripe Checkout for real payments
+      // Demo mode: skip Stripe checkout when REACT_APP_DEMO_MODE=true
+      if (process.env.REACT_APP_DEMO_MODE === 'true') {
+        console.log("Demo mode enabled: Skipping Stripe checkout");
+        try {
+          const licenseResponse = await apiService.sendLicenseEmail({
+            email: data.email,
+          });
+          setLicenseKey(licenseResponse.license_key || "DEMO_LICENSE_KEY");
+          onNext();
+          return;
+        } catch (error) {
+          console.error("Demo mode license creation failed:", error);
+          throw new Error("Failed to process demo license. Please try again.");
+        }
+      }
+
+      // For real payments, redirect to Stripe Checkout
+      if (!checkoutResponse.session_id) {
+        throw new Error("No session ID received from the server. Please check your backend configuration.");
+      }
+
       const { error } = await stripe.redirectToCheckout({
-        sessionId: checkoutResponse.session_id,
+        sessionId: checkoutResponse.session_id
       });
 
       if (error) {
+        console.error("Stripe redirect error:", error);
         throw new Error(error.message);
       }
     } catch (err) {

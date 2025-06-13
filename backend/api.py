@@ -93,10 +93,10 @@ async def get_api_key_by_license(license_key: str):
 
 @app.post("/create-account")
 async def create_new_account(
-    first_name: str,
-    last_name: str,
-    company_name: str,
-    email: str
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    company_name: str = Form(...),
+    email: str = Form(...)
 ):
     """Create a new user account with automatic license key generation."""
     try:
@@ -106,32 +106,7 @@ async def create_new_account(
             company_name=company_name,
             email=email
         )
-
-        if user_id:
-            # Automatically create license key for the new user
-            license_key = license_repo.create_and_set_license_key_by_user_id(
-                user_id)
-
-            if license_key:
-                return {
-                    "message": "Account and license key created successfully",
-                    "email": email,
-                    "user_id": user_id,
-                    "license_key": license_key
-                }
-            else:
-                # Account was created but license generation failed
-                logger.error(
-                    f"License key generation failed for user {user_id}")
-                return {
-                    "message": "Account created but license key generation failed",
-                    "email": email,
-                    "user_id": user_id,
-                    "license_key": None
-                }
-        else:
-            raise HTTPException(
-                status_code=400, detail="Account already exists or creation failed")
+        return {"message": "Account created successfully", "user_id": user_id}
 
     except Exception as e:
         logger.error(f"Error creating account for {email}: {e}")
@@ -139,7 +114,7 @@ async def create_new_account(
 
 
 @app.put("/update-api-key")
-async def update_api_key(email: str, new_api_key: str):
+async def update_api_key(email: str = Form(...), new_api_key: str = Form(...)):
     """Update API key for an existing user."""
     try:
         success = license_repo.update_user_info(
@@ -172,23 +147,27 @@ async def get_user_info(email: str):
 
 
 @app.post("/send-license-email")
-async def send_license_email_endpoint(email: str):
+async def send_license_email_endpoint(email: str = Form(...)):
     """Create license key and send it via email if user exists."""
     try:
         # First, get user info
         user_info = license_repo.get_license_by_email(email)
-        print(f"User info: {user_info}")
+        logger.info(f"User info for {email}: {user_info}")
         if not user_info:
             raise HTTPException(status_code=404, detail="User not found")
 
         # Create license key if it doesn't exist
         if not user_info.get('license_code'):
+            logger.info(f"Creating license key for {email}")
             license_key = license_repo.create_and_set_license_key(email)
             if not license_key:
+                logger.error(f"Failed to create license key for {email}")
                 raise HTTPException(
                     status_code=500, detail="Failed to create license key")
+            logger.info(f"Created license key for {email}: {license_key}")
         else:
             license_key = user_info['license_code']
+            logger.info(f"Using existing license key for {email}: {license_key}")
 
         # Send email
         email_sender = LicenseEmailSender()
@@ -199,9 +178,11 @@ async def send_license_email_endpoint(email: str):
         )
 
         if success:
+            logger.info(f"License key sent successfully to {email}: {license_key}")
             return {
                 "message": "License key sent successfully",
                 "email": email,
+                "license_key": license_key  # Include the license key in the response
             }
         else:
             raise HTTPException(
@@ -247,21 +228,20 @@ async def create_checkout_session(
 
         # Check if Stripe is configured
         if not stripe.api_key:
-            logger.warning(
-                "Stripe API key not configured. Running in test mode.")
+            logger.warning("Stripe API key not configured. Running in test mode.")
             return {
                 "session_id": "cs_test_mock_session_id_for_testing_12345",
                 "message": "TEST MODE: Stripe not configured. Set STRIPE_SECRET_KEY environment variable for real payments."
             }
 
-        # Simulate user logic (stub this for now)
-        try:
-            logger.info("Simulating user creation/updating in database.")
-            # Replace this with license_repo.add_new_user(...) if available
-            user_id = 123
-            logger.info(f"User ID: {user_id}")
-        except Exception as user_error:
-            logger.error(f"User handling error: {user_error}")
+        # Check if user exists (they should, since BasicInfoStep creates them)
+        user_info = license_repo.get_license_by_email(user_email)
+        if not user_info:
+            logger.error(f"User not found: {user_email}")
+            raise HTTPException(status_code=404, detail="User not found. Please complete the registration first.")
+
+        logger.info(f"User found for checkout: {user_email}")
+        # License key will be created after successful payment in the webhook
 
         # Create checkout session
         try:
@@ -276,7 +256,7 @@ async def create_checkout_session(
                 subscription_data={
                     'trial_period_days': 30,
                 },
-                success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
+                success_url=success_url,
                 cancel_url=cancel_url,
                 customer_email=user_email,
                 metadata={
@@ -288,14 +268,18 @@ async def create_checkout_session(
             )
             logger.info(f"Stripe session created: {session.id}")
             return {"session_id": session.id}
-        except Exception as stripe_error:
+        except stripe.error.StripeError as stripe_error:
             logger.error(f"Stripe error: {stripe_error}")
-            raise HTTPException(
-                status_code=400, detail=f"Stripe error: {stripe_error}")
+            error_message = str(stripe_error)
+            if "price_id" in error_message.lower():
+                error_message = "Invalid price ID. Please check your Stripe product configuration."
+            raise HTTPException(status_code=400, detail=error_message)
 
+    except HTTPException as http_error:
+        raise http_error
     except Exception as e:
         logger.exception("Unexpected error during checkout session creation")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/stripe-webhook")
@@ -325,26 +309,29 @@ async def stripe_webhook(request: Request):
 
         logger.info(f"Processing successful payment for {user_email}")
 
-        # Get user info and create license key if needed
+        # Get user info and create license key after successful payment
         user_info = license_repo.get_license_by_email(user_email)
         if user_info and not user_info.get('license_code'):
             license_key = license_repo.create_and_set_license_key(user_email)
         elif user_info:
             license_key = user_info.get('license_code')
         else:
+            logger.error(f"User not found during webhook processing: {user_email}")
             license_key = None
 
         if license_key:
-            # Send license key email
+            # Send license key email after successful payment
+            logger.info(f"Attempting to send license key email to {user_email} for company {company_name} with license key {license_key}")
             email_sender = LicenseEmailSender()
-            success, sent_license_key = email_sender.send_license_email(
-                user_email, company_name)
-
-            if success:
-                logger.info(
-                    f"License key {license_key} created and emailed to {user_email}")
-            else:
-                logger.error(f"Failed to send license email to {user_email}")
+            try:
+                success, sent_license_key = email_sender.send_license_email(
+                    user_email, company_name, license_key)
+                if success:
+                    logger.info(f"License key {license_key} created and emailed to {user_email}")
+                else:
+                    logger.error(f"Failed to send license email to {user_email}")
+            except Exception as e:
+                logger.error(f"Exception while sending license email: {e}")
         else:
             logger.error(f"Failed to create license key for {user_email}")
 
@@ -355,6 +342,116 @@ async def stripe_webhook(request: Request):
         logger.info(f"Subscription cancelled for customer {customer_id}")
 
     return {"status": "success"}
+
+
+@app.get("/user-exists/{email}")
+async def user_exists(email: str):
+    """Check if a user with the given email already exists."""
+    try:
+        exists = license_repo.user_exists(email)
+        return {"exists": exists}
+    except Exception as e:
+        logger.error(f"Error checking if user exists for {email}: {e}")
+        raise HTTPException(status_code=500, detail="Error checking user existence")
+
+
+@app.post("/process-payment-success")
+async def process_payment_success(session_id: str = Form(...)):
+    """Process successful payment by validating Stripe session and creating license key."""
+    try:
+        logger.info(f"Processing payment success for session: {session_id}")
+        
+        # Check if Stripe is configured
+        if not stripe.api_key:
+            logger.warning("Stripe API key not configured. Running in test mode.")
+            # In test mode, we can't validate the session, so we'll extract email from session_id
+            # For test mode, we expect a mock session format or we'll need to handle it differently
+            if session_id == "cs_test_mock_session_id_for_testing_12345":
+                # Return success for the mock session without processing
+                return {
+                    "status": "success",
+                    "message": "TEST MODE: Payment processed successfully",
+                    "test_mode": True,
+                    "license_key": "TEST_LICENSE_KEY",
+                    "email": "test@example.com"
+                }
+            else:
+                raise HTTPException(status_code=400, detail="TEST MODE: Invalid session ID. Stripe not configured.")
+        
+        # Retrieve the session from Stripe
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+            logger.info(f"Retrieved Stripe session: {session.id}, status: {session.payment_status}")
+        except stripe.error.StripeError as e:
+            logger.error(f"Error retrieving Stripe session: {e}")
+            raise HTTPException(status_code=400, detail="Invalid session ID")
+        
+        # Check if payment was successful
+        if session.payment_status != 'paid':
+            logger.warning(f"Payment not completed for session {session_id}, status: {session.payment_status}")
+            raise HTTPException(status_code=400, detail="Payment not completed")
+        
+        # Extract user data from session metadata
+        user_email = session.metadata.get('user_email')
+        company_name = session.metadata.get('company_name')
+        
+        if not user_email:
+            logger.error(f"No user email found in session metadata for {session_id}")
+            raise HTTPException(status_code=400, detail="User email not found in session")
+        
+        logger.info(f"Processing successful payment for {user_email}")
+        
+        # Get user info and create license key
+        user_info = license_repo.get_license_by_email(user_email)
+        if not user_info:
+            logger.error(f"User not found: {user_email}")
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Create license key if it doesn't exist
+        if not user_info.get('license_code'):
+            license_key = license_repo.create_and_set_license_key(user_email)
+        else:
+            license_key = user_info.get('license_code')
+            
+        if not license_key:
+            logger.error(f"Failed to create license key for {user_email}")
+            raise HTTPException(status_code=500, detail="Failed to create license key")
+        
+        # Send license email
+        email_sender = LicenseEmailSender()
+        try:
+            success, sent_license_key = email_sender.send_license_email(
+                user_email, company_name or user_info['company_name'], license_key)
+            if success:
+                logger.info(f"License key {license_key} created and emailed to {user_email}")
+                return {
+                    "status": "success",
+                    "message": "License key created and sent successfully",
+                    "license_key": license_key,
+                    "email": user_email
+                }
+            else:
+                logger.warning(f"License key created but email failed for {user_email}")
+                return {
+                    "status": "partial_success",
+                    "message": "License key created but email delivery failed",
+                    "license_key": license_key,
+                    "email": user_email
+                }
+        except Exception as email_error:
+            logger.error(f"Exception while sending license email: {email_error}")
+            return {
+                "status": "partial_success",
+                "message": "License key created but email delivery failed",
+                "license_key": license_key,
+                "email": user_email
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing payment success: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

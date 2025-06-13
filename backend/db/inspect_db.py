@@ -25,7 +25,6 @@ def print_all_licenses():
         print("Name:", f"{license['first_name']} {license['last_name']}")
         print("Company:", license['company_name'])
         print("Email:", license['email'])
-        print("Mistral API Key:", license['mistral_api_key'])
         print("License Code:", license['license_code'] or 'Not set')
         print("Created:", license['created_at'])
         print("Updated:", license['updated_at'])

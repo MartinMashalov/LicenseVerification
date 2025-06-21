@@ -254,7 +254,7 @@ async def create_checkout_session(
                     'quantity': 1,
                 }],
                 subscription_data={
-                    'trial_period_days': 30,
+                    'trial_period_days': 7,
                 },
                 success_url=success_url,
                 cancel_url=cancel_url,
